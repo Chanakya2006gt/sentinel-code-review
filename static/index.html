@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="application-name" content="SentinelReview">
+  <title>Sentinel — Automated Code Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #F1F3EF;
+      --panel: #FBFCFA;
+      --ink: #191D21;
+      --ink-soft: #565D64;
+      --ink-faint: #676D74;
+      --rule: #DADED4;
+      --rule-strong: #C7CCC2;
+      --accent: #2F3C97;
+      --accent-ink: #27327F;
+      --accent-wash: rgba(47, 60, 151, 0.07);
+      --high: #B23024;
+      --high-wash: rgba(178, 48, 36, 0.09);
+      --med: #8F560C;
+      --med-wash: rgba(143, 86, 12, 0.10);
+      --low: #596573;
+      --low-wash: rgba(89, 101, 115, 0.10);
+      --clean: #2C6A49;
+      --clean-wash: rgba(44, 106, 73, 0.10);
+      --code-bg: #1B2027;
+      --code-panel: #20262E;
+      --code-ink: #D5DAE1;
+      --code-gutter: #4A525E;
+      --code-rule: #2C333C;
+      --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+      --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --shadow: 0 1px 2px rgba(25, 29, 33, 0.04), 0 8px 24px rgba(25, 29, 33, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.55;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-ink); }
+
+    /* ---------- Masthead ---------- */
+    header {
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+    }
+    .masthead {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1.15rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .wordmark { display: flex; align-items: baseline; gap: 0.6rem; }
+    .wordmark .mark {
+      width: 14px; height: 14px; border-radius: 3px;
+      background: var(--accent);
+      transform: translateY(1px);
+      flex: none;
+    }
+    .wordmark h1 {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 1.5rem;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .wordmark .sub {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      max-width: 34ch;
+    }
+    .status {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.82rem; color: var(--ink-soft);
+      border: 1px solid var(--rule);
+      background: var(--panel);
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+    }
+    .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+    .status.live .dot { background: var(--clean); }
+    .status.busy .dot { background: var(--med); animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.3; } }
+
+    /* ---------- Product Framing Band ---------- */
+    .framing {
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+    }
+    .framing-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1.35rem 2rem 1.45rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .framing h2 {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 1.6rem;
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+    .framing p {
+      font-family: var(--sans);
+      font-size: 0.93rem;
+      color: var(--ink-soft);
+      max-width: 72ch;
+      line-height: 1.55;
+    }
+    .capability-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 0.6rem;
+      margin-top: 0.3rem;
+    }
+    .cap-chip {
+      font-family: var(--sans);
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      background: var(--panel);
+      border: 1px solid var(--rule-strong);
+      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      line-height: 1.4;
+      white-space: normal;
+    }
+    @media (max-width: 920px) {
+      .framing-inner { padding: 1.1rem 1.25rem; }
+      .framing h2 { font-size: 1.35rem; }
+      .framing p { font-size: 0.88rem; }
+      .cap-chip { font-size: 0.75rem; }
+    }
+
+    /* ---------- Workbench ---------- */
+    main {
+      flex: 1;
+      max-width: 1240px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+      gap: 1.75rem;
+      align-items: start;
+      min-width: 0;
+    }
+    @media (max-width: 920px) {
+      .workbench { grid-template-columns: minmax(0, 1fr); }
+      main { padding: 1.25rem; }
+      .masthead { padding: 1rem 1.25rem; }
+    }
+
+    .panel-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--ink-soft);
+      margin-bottom: 0.7rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .panel-label .n {
+      font-family: var(--mono);
+      color: var(--accent-ink);
+      font-weight: 500;
+    }
+
+    /* ---------- Submission (editor) ---------- */
+    .editor {
+      background: var(--code-bg);
+      border: 1px solid var(--rule-strong);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      min-width: 0;
+      max-width: 100%;
+    }
+    .editor-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--code-panel);
+      border-bottom: 1px solid var(--code-rule);
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .control {
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      color: var(--code-ink);
+      background: #272E37;
+      border: 1px solid #333B45;
+      border-radius: 7px;
+      padding: 0.4rem 0.6rem;
+      outline: none;
+      cursor: pointer;
+      max-width: 100%;
+    }
+    .control:focus-visible { border-color: #6B78F0; box-shadow: 0 0 0 3px rgba(107,120,240,0.3); }
+    select.control { padding-right: 1.6rem; max-width: 100%; text-overflow: ellipsis; }
+    #sample { max-width: 100%; }
+    .toggle {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.82rem; color: #AEB6C0; cursor: pointer; user-select: none;
+      margin-left: auto;
+    }
+    .toggle input { accent-color: #6B78F0; width: 15px; height: 15px; cursor: pointer; }
+
+    /* Change 2: Auto-growing code wrap and editor */
+    .code-wrap {
+      display: flex;
+      align-items: stretch;
+      background: var(--code-bg);
+      position: relative;
+    }
+    .gutter {
+      flex: none;
+      padding: 1rem 0.6rem 1rem 0.9rem;
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: var(--code-gutter);
+      background: var(--code-bg);
+      border-right: 1px solid var(--code-rule);
+      overflow: hidden;
+      user-select: none;
+      white-space: pre;
+      min-width: 3ch;
+    }
+    #code-input {
+      flex: 1;
+      min-width: 0;
+      min-height: 200px;
+      max-height: 440px;
+      background: transparent;
+      color: var(--code-ink);
+      border: none;
+      padding: 1rem 1rem 1rem 0.85rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      tab-size: 4;
+      white-space: pre;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    #code-input::placeholder { color: #5B6570; }
+
+    .editor-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.7rem 0.85rem;
+      background: var(--code-panel);
+      border-top: 1px solid var(--code-rule);
+    }
+    .meter { font-family: var(--mono); font-size: 0.76rem; color: #7E8791; }
+
+    button#run {
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1.3rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      transition: background 0.15s ease;
+    }
+    button#run:hover { background: #26327F; }
+    button#run:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(107,120,240,0.45); }
+    button#run:disabled { background: #4A5270; cursor: progress; }
+
+    .spin {
+      width: 15px; height: 15px; flex: none;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Report ---------- */
+    .report { min-height: 480px; min-width: 0; max-width: 100%; }
+
+    .placeholder {
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 3rem 2rem;
+      color: var(--ink-soft);
+      box-shadow: var(--shadow);
+    }
+    .placeholder h2 {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 1.35rem;
+      color: var(--ink);
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.01em;
+    }
+    .placeholder p { font-size: 0.95rem; max-width: 42ch; }
+    .placeholder ol {
+      margin-top: 1.25rem; padding-left: 1.1rem;
+      font-size: 0.9rem; color: var(--ink-soft);
+      display: grid; gap: 0.35rem;
+    }
+
+    /* verdict */
+    .verdict {
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 1.5rem 1.6rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.25rem;
+    }
+    .verdict h2 {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 1.85rem;
+      line-height: 1.15;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+    }
+    .verdict h2 .accent { color: var(--high); }
+    .verdict h2.is-clean .accent { color: var(--clean); }
+    .verdict .lede { margin-top: 0.5rem; color: var(--ink-soft); font-size: 0.95rem; max-width: 52ch; }
+
+    .tally { margin-top: 1.25rem; }
+    .tally-bar {
+      display: flex;
+      height: 9px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--rule);
+    }
+    .tally-bar span { display: block; height: 100%; }
+    .tally-bar .s-high { background: var(--high); }
+    .tally-bar .s-med { background: var(--med); }
+    .tally-bar .s-low { background: var(--low); }
+    .tally-bar .s-clean { background: var(--clean); flex: 1; }
+    .legend {
+      margin-top: 0.7rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.1rem;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+    .legend b { color: var(--ink); font-weight: 600; }
+    .legend .key { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .legend .sq { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+    .sq.s-high { background: var(--high); }
+    .sq.s-med { background: var(--med); }
+    .sq.s-low { background: var(--low); }
+
+    .provenance {
+      margin-top: 1.1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.4rem;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+    .provenance .engine { font-family: var(--mono); color: var(--accent-ink); }
+
+    .notice {
+      margin-top: 1rem;
+      background: var(--med-wash);
+      border: 1px solid rgba(143,86,12,0.25);
+      border-radius: 8px;
+      padding: 0.7rem 0.9rem;
+      font-size: 0.85rem;
+      color: var(--med);
+      line-height: 1.5;
+    }
+    .notice code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: rgba(143,86,12,0.12);
+      padding: 0.05rem 0.3rem;
+      border-radius: 4px;
+    }
+
+    /* findings */
+    .findings { display: flex; flex-direction: column; min-width: 0; }
+    .finding {
+      display: grid;
+      grid-template-columns: 3.1rem 1fr;
+      gap: 0.3rem 1rem;
+      padding: 1.3rem 0;
+      border-top: 1px solid var(--rule);
+      min-width: 0;
+    }
+    .finding:first-child { border-top: none; }
+
+    .line-ref {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--ink-faint);
+      text-align: right;
+      padding-top: 0.2rem;
+      white-space: nowrap;
+    }
+    .line-ref .ln { color: var(--ink-soft); display: block; }
+
+    .f-body { min-width: 0; overflow-wrap: break-word; }
+    .f-title {
+      font-size: 1.08rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      word-break: break-word;
+    }
+    .sev {
+      flex: none;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem 0.15rem 0.4rem;
+      border-radius: 5px;
+    }
+    .sev .sq { width: 8px; height: 8px; border-radius: 2px; }
+    .sev.s-high { background: var(--high-wash); color: var(--high); }
+    .sev.s-med { background: var(--med-wash); color: var(--med); }
+    .sev.s-low { background: var(--low-wash); color: var(--low); }
+
+    .f-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.7rem;
+      margin-bottom: 0.7rem;
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+    }
+    .tag {
+      font-size: 0.72rem;
+      border: 1px solid var(--rule-strong);
+      border-radius: 5px;
+      padding: 0.1rem 0.45rem;
+      color: var(--ink-soft);
+      text-transform: capitalize;
+    }
+    .cwe {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent-ink);
+      background: var(--accent-wash);
+      padding: 0.1rem 0.45rem;
+      border-radius: 5px;
+    }
+    .src { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); }
+
+    .f-explain { font-size: 0.93rem; color: #343A41; line-height: 1.6; max-width: 62ch; }
+
+    .fix {
+      margin-top: 0.85rem;
+      background: var(--code-bg);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .fix-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.45rem 0.7rem 0.45rem 0.85rem;
+      background: var(--code-panel);
+      border-bottom: 1px solid var(--code-rule);
+    }
+    .fix-top span { font-size: 0.74rem; color: #9BA3AD; font-weight: 500; }
+    .copy {
+      font-family: var(--sans);
+      font-size: 0.74rem;
+      color: #AEB6C0;
+      background: transparent;
+      border: 1px solid #333B45;
+      border-radius: 6px;
+      padding: 0.2rem 0.55rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .copy:hover { color: #fff; border-color: #6B78F0; }
+    .copy:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(107,120,240,0.4); }
+    .copy.done { color: #6FCF97; border-color: #2C6A49; }
+    .fix pre {
+      margin: 0;
+      padding: 0.8rem 0.85rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--code-ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-x: auto;
+    }
+
+    .clean-note {
+      border: 1px solid var(--clean-wash);
+      background: var(--clean-wash);
+      border-radius: 10px;
+      padding: 1.5rem 1.6rem;
+      color: var(--clean);
+    }
+    .clean-note h3 { font-family: var(--serif); font-weight: 500; font-size: 1.3rem; margin-bottom: 0.3rem; }
+    .clean-note p { font-size: 0.92rem; color: #3C5A4A; }
+
+    .error {
+      border: 1px solid rgba(178,48,36,0.3);
+      background: var(--high-wash);
+      border-radius: 10px;
+      padding: 1.25rem 1.4rem;
+      color: var(--high);
+    }
+    .error strong { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
+    .error span { color: #7A3129; font-size: 0.9rem; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal { animation: rise 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+      .finding { animation: rise 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+      @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+    }
+
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--rule);
+      padding: 1.1rem 2rem;
+      max-width: 1240px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+      font-size: 0.8rem;
+      color: var(--ink-faint);
+      line-height: 1.5;
+    }
+    footer b { color: var(--ink-soft); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <!-- Masthead -->
+  <header>
+    <div class="masthead">
+      <div class="wordmark">
+        <span class="mark" aria-hidden="true"></span>
+        <h1>Sentinel</h1>
+        <span class="sub">Automated code review — reads the whole file, flags only what it&rsquo;s sure of.</span>
+      </div>
+      <div class="status" id="status" role="status" aria-live="polite">
+        <span class="dot"></span><span id="status-text">Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Change 3: Compact Hero / Product Framing Band -->
+  <section class="framing" aria-label="Product overview">
+    <div class="framing-inner">
+      <h2>Code review that reads the whole file.</h2>
+      <p>Paste a change. Sentinel runs static analysis, reviews it with full-file context, and filters the false positives — flagging only what it&rsquo;s sure of.</p>
+      <div class="capability-chips" role="list" aria-label="Key capabilities">
+        <span class="cap-chip" role="listitem">Whole-file context &mdash; sees code the diff didn&rsquo;t touch</span>
+        <span class="cap-chip" role="listitem">Flags hidden-comment prompt injection</span>
+        <span class="cap-chip" role="listitem">False positives filtered by a verification pass</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Workbench -->
+  <main>
+    <div class="workbench">
+
+      <!-- Submission -->
+      <section aria-labelledby="submit-label">
+        <div class="panel-label" id="submit-label"><span class="n">A</span> Submission</div>
+        <div class="editor">
+          <div class="editor-bar">
+            <select class="control" id="sample" aria-label="Load a sample" style="margin-right:auto">
+              <option value="">Load a sample…</option>
+            </select>
+            <select class="control" id="lang" aria-label="Language">
+              <option value="Python">Python</option>
+              <option value="JavaScript">JavaScript</option>
+              <option value="Other">Other</option>
+            </select>
+            <label class="toggle" for="diff">
+              <input type="checkbox" id="diff">
+              Unified diff
+            </label>
+          </div>
+          <div class="code-wrap">
+            <div class="gutter" id="gutter" aria-hidden="true">1</div>
+            <textarea id="code-input" spellcheck="false" placeholder="Paste source code or a unified git diff, or load a sample above."></textarea>
+          </div>
+          <div class="editor-foot">
+            <span class="meter" id="meter">0 lines · 0 chars</span>
+            <button id="run" type="button"><span id="run-label">Review code</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Report -->
+      <section class="report" id="report" aria-labelledby="report-label" aria-live="polite">
+        <div class="panel-label" id="report-label"><span class="n">B</span> Report</div>
+        <div class="placeholder" id="placeholder">
+          <h2>No review yet</h2>
+          <p>Load a sample or paste a snippet, then run a review. Findings appear here, each anchored to its line with a suggested fix.</p>
+          <ol>
+            <li>Static analysis (Semgrep) finds candidate issues.</li>
+            <li>The model reviews them with the whole file for context.</li>
+            <li>A verification pass drops the false positives.</li>
+          </ol>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer>
+    <b>Sentinel</b> — Semgrep static analysis + prompt-injection pre-scan + a Groq/Gemini review and verification gate. Runs locally at no cost. Every bundled snippet is labelled a sample.
+  </footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const sampleSel = $('sample');
+    const langSel = $('lang');
+    const diffBox = $('diff');
+    const code = $('code-input');
+    const gutter = $('gutter');
+    const meter = $('meter');
+    const runBtn = $('run');
+    const runLabel = $('run-label');
+    const report = $('report');
+    const statusEl = $('status');
+    const statusText = $('status-text');
+
+    let samples = [];
+    let hasAutoRun = false;
+
+    function setStatus(mode, text) {
+      statusEl.className = 'status' + (mode ? ' ' + mode : '');
+      statusText.textContent = text;
+    }
+
+    /* Change 2: Auto-grow textarea between 200px and 440px */
+    function autoResize() {
+      code.style.height = 'auto';
+      const targetHeight = Math.min(Math.max(code.scrollHeight, 200), 440);
+      code.style.height = targetHeight + 'px';
+      gutter.scrollTop = code.scrollTop;
+    }
+
+    function syncGutter() {
+      const lines = code.value.split('\n').length || 1;
+      let out = '';
+      for (let i = 1; i <= lines; i++) out += i + (i < lines ? '\n' : '');
+      gutter.textContent = out;
+      gutter.scrollTop = code.scrollTop;
+      const chars = code.value.length;
+      meter.textContent = lines + (lines === 1 ? ' line · ' : ' lines · ') + chars + (chars === 1 ? ' char' : ' chars');
+    }
+
+    code.addEventListener('input', () => {
+      autoResize();
+      syncGutter();
+      if (code.value.includes('diff --git') || /^@@ /m.test(code.value)) diffBox.checked = true;
+    });
+    code.addEventListener('scroll', () => { gutter.scrollTop = code.scrollTop; });
+
+    async function loadSamples() {
+      try {
+        const res = await fetch('/api/samples');
+        if (!res.ok) throw new Error('samples');
+        samples = (await res.json()).samples || [];
+        for (const s of samples) {
+          const o = document.createElement('option');
+          o.value = s.id; o.textContent = s.label;
+          sampleSel.appendChild(o);
+        }
+      } catch (e) { /* samples are optional; editor still works */ }
+    }
+
+    sampleSel.addEventListener('change', (e) => {
+      const s = samples.find(x => x.id === e.target.value);
+      if (!s) return;
+      code.value = s.code;
+      langSel.value = s.language || 'Other';
+      diffBox.checked = s.code.includes('diff --git') || /^@@ /m.test(s.code);
+      autoResize();
+      syncGutter();
+    });
+
+    /* Change 1: Refactored review runner with isAuto guard */
+    async function runReview(isAuto = false) {
+      const text = code.value.trim();
+      if (!text) {
+        if (!isAuto) {
+          code.focus();
+          setStatus('busy', 'Paste or load code first');
+          setTimeout(() => setStatus('', 'Ready'), 1800);
+        }
+        return;
+      }
+
+      runBtn.disabled = true;
+      runLabel.innerHTML = '<span class="spin"></span> Reviewing';
+      setStatus('busy', 'Reviewing');
+
+      try {
+        const res = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: text, language: langSel.value, is_diff: diffBox.checked })
+        });
+        if (!res.ok) {
+          let d; try { d = await res.json(); } catch { d = {}; }
+          throw new Error(d.detail || ('Request failed (HTTP ' + res.status + ')'));
+        }
+        render(await res.json());
+      } catch (err) {
+        if (!isAuto) {
+          renderError(err.message);
+        }
+        setStatus('', 'Ready');
+      } finally {
+        runBtn.disabled = false;
+        runLabel.textContent = 'Review code';
+      }
+    }
+
+    runBtn.addEventListener('click', () => runReview(false));
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    const SEV_WORD = { high: 'High', medium: 'Medium', low: 'Low' };
+
+    function verdictLine(counts) {
+      const total = counts.high + counts.medium + counts.low;
+      if (total === 0) return { html: 'Nothing flagged.', clean: true };
+      const parts = [];
+      if (counts.high) parts.push('<span class="accent">' + counts.high + (counts.high === 1 ? ' critical issue' : ' critical issues') + '</span>');
+      if (counts.medium) parts.push(counts.medium + (counts.medium === 1 ? ' to review' : ' to review'));
+      if (counts.low) parts.push(counts.low + ' minor');
+      if (counts.high) {
+        const lead = parts.shift();
+        const rest = parts.length ? ', ' + parts.join(', ') : '';
+        return { html: lead + rest + '.', clean: false };
+      }
+      return { html: total + (total === 1 ? ' issue' : ' issues') + ' found — ' + parts.join(', ') + '.', clean: false };
+    }
+
+    function render(data) {
+      const counts = Object.assign({ high: 0, medium: 0, low: 0, false_positives_filtered: 0 }, data.counts || {});
+      const findings = data.findings || [];
+      const provider = data.provider_used || 'sast-only';
+      const total = counts.high + counts.medium + counts.low;
+
+      const v = verdictLine(counts);
+
+      let bar;
+      if (total === 0) {
+        bar = '<span class="s-clean"></span>';
+      } else {
+        const seg = (c, cls) => c ? '<span class="' + cls + '" style="flex:' + c + '"></span>' : '';
+        bar = seg(counts.high, 's-high') + seg(counts.medium, 's-med') + seg(counts.low, 's-low');
+      }
+
+      const legend = [
+        counts.high ? '<span class="key"><span class="sq s-high"></span><b>' + counts.high + '</b> high</span>' : '',
+        counts.medium ? '<span class="key"><span class="sq s-med"></span><b>' + counts.medium + '</b> medium</span>' : '',
+        counts.low ? '<span class="key"><span class="sq s-low"></span><b>' + counts.low + '</b> low</span>' : ''
+      ].filter(Boolean).join('');
+
+      const engineName = { groq: 'Groq', gemini: 'Gemini', 'sast-only': 'Static analysis only' }[provider] || provider;
+
+      let html = '<div class="panel-label"><span class="n">B</span> Report</div>';
+      html += '<div class="verdict reveal">';
+      html += '<h2' + (v.clean ? ' class="is-clean"' : '') + '>' + v.html + '</h2>';
+      html += '<p class="lede">' + esc(data.summary || 'Review complete.') + '</p>';
+      if (total > 0) {
+        html += '<div class="tally"><div class="tally-bar" role="img" aria-label="' +
+          counts.high + ' high, ' + counts.medium + ' medium, ' + counts.low + ' low severity">' + bar + '</div>';
+        html += '<div class="legend">' + legend + '</div></div>';
+      }
+      html += '<div class="provenance">';
+      html += '<span>Engine <span class="engine">' + esc(engineName) + '</span></span>';
+      if (counts.false_positives_filtered > 0) {
+        html += '<span><b style="color:var(--clean)">' + counts.false_positives_filtered + '</b> false ' +
+          (counts.false_positives_filtered === 1 ? 'positive' : 'positives') + ' filtered by verification</span>';
+      }
+      html += '</div>';
+      if (provider === 'sast-only') {
+        html += '<div class="notice">Static analysis only. Add a <code>GROQ_API_KEY</code> or <code>GEMINI_API_KEY</code> to <code>.env</code> to turn on AI review and false-positive filtering.</div>';
+      }
+      html += '</div>';
+
+      if (findings.length === 0) {
+        html += '<div class="clean-note reveal"><h3>No issues in this file</h3>' +
+          '<p>Static analysis and the injection scan found nothing to report' +
+          (provider === 'sast-only' ? '. Add an API key to add AI review on top.' : ', and the review agent confirmed it.') + '</p></div>';
+        report.innerHTML = html;
+        setStatus('live', 'Clean');
+        return;
+      }
+
+      html += '<div class="findings">';
+      findings.forEach((f, i) => {
+        const sev = (f.severity || 'low').toLowerCase();
+        const sevClass = sev === 'high' ? 's-high' : (sev === 'medium' ? 's-med' : 's-low');
+        const conf = f.confidence != null ? Math.round(f.confidence * 100) + '% confident' : '';
+        html += '<article class="finding" style="animation-delay:' + (i * 55) + 'ms">';
+        html += '<div class="line-ref">' + (f.line ? '<span class="ln">line</span>' + esc(f.line) : '&mdash;') + '</div>';
+        html += '<div class="f-body">';
+        html += '<div class="f-title"><span class="sev ' + sevClass + '"><span class="sq ' + sevClass + '"></span>' +
+          (SEV_WORD[sev] || 'Low') + '</span><span>' + esc(f.title || 'Issue') + '</span></div>';
+        html += '<div class="f-meta">';
+        if (f.category) html += '<span class="tag">' + esc(f.category) + '</span>';
+        if (f.cwe) html += '<span class="cwe">' + esc(f.cwe) + '</span>';
+        if (conf) html += '<span>' + conf + '</span>';
+        if (f.source) html += '<span class="src">' + esc(f.source) + '</span>';
+        html += '</div>';
+        if (f.explanation) html += '<p class="f-explain">' + esc(f.explanation) + '</p>';
+        if (f.suggested_fix) {
+          const id = 'fix-' + i;
+          html += '<div class="fix"><div class="fix-top"><span>Suggested fix</span>' +
+            '<button class="copy" type="button" data-target="' + id + '">Copy</button></div>' +
+            '<pre id="' + id + '">' + esc(f.suggested_fix) + '</pre></div>';
+        }
+        html += '</div></article>';
+      });
+      html += '</div>';
+
+      report.innerHTML = html;
+      setStatus('live', total + (total === 1 ? ' issue' : ' issues'));
+      bindCopy();
+    }
+
+    function renderError(msg) {
+      report.innerHTML = '<div class="panel-label"><span class="n">B</span> Report</div>' +
+        '<div class="error reveal"><strong>Review didn&rsquo;t run</strong><span>' + esc(msg) + '</span></div>';
+    }
+
+    function bindCopy() {
+      report.querySelectorAll('.copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pre = document.getElementById(btn.dataset.target);
+          if (!pre) return;
+          navigator.clipboard.writeText(pre.textContent).then(() => {
+            btn.textContent = 'Copied';
+            btn.classList.add('done');
+            setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1800);
+          }).catch(() => { btn.textContent = 'Press ⌘C'; });
+        });
+      });
+    }
+
+    /* Change 1 & 2: Initialization with Auto-load, Auto-grow, and Auto-run */
+    async function init() {
+      autoResize();
+      syncGutter();
+      await loadSamples();
+      if (samples.length > 0 && !hasAutoRun) {
+        hasAutoRun = true;
+        // Pick sample whose label contains "SQL" (case-insensitive); if none, pick first sample
+        const sampleToLoad = samples.find(s => /sql/i.test(s.label)) || samples[0];
+        if (sampleToLoad) {
+          sampleSel.value = sampleToLoad.id;
+          code.value = sampleToLoad.code;
+          langSel.value = sampleToLoad.language || 'Other';
+          diffBox.checked = sampleToLoad.code.includes('diff --git') || /^@@ /m.test(sampleToLoad.code);
+          autoResize();
+          syncGutter();
+          await runReview(true);
+        }
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
